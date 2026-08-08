@@ -1,0 +1,44 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+helmCharts:
+  - name: kube-prometheus-stack
+    repo: https://prometheus-community.github.io/helm-charts
+    # VERIFY before first apply: helm search repo kube-prometheus-stack --versions
+    version: 69.2.3
+    releaseName: kube-prometheus-stack
+    namespace: monitoring
+    includeCRDs: true
+    valuesInline:
+      crds:
+        enabled: true
+      prometheus:
+        prometheusSpec:
+          retention: 15d
+          # Pick up ServiceMonitors from every namespace, not just monitoring.
+          serviceMonitorSelectorNilUsesHelmValues: false
+          podMonitorSelectorNilUsesHelmValues: false
+          ruleSelectorNilUsesHelmValues: false
+          storageSpec:
+            volumeClaimTemplate:
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                resources:
+                  requests:
+                    storage: 50Gi
+      grafana:
+        enabled: true
+        # Password must come from External Secrets, not from here.
+        admin:
+          existingSecret: grafana-admin
+        sidecar:
+          dashboards:
+            enabled: true
+            searchNamespace: ALL
+      alertmanager:
+        enabled: true
+
+resources:
+  - argocd-alerts.yaml

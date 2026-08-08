@@ -1,0 +1,10 @@
+# never commit rendered output or local kubeconfigs
+*.tmp
+*.rendered.yaml
+kubeconfig
+.kubeconfig
+.DS_Store
+
+# SOPS/age private keys must never be committed
+*.agekey
+key.txt

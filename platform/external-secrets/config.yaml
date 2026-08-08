@@ -1,0 +1,4 @@
+name: external-secrets
+namespace: external-secrets
+# Earliest wave: nothing else can resolve its secrets until this is running.
+syncWave: "-40"

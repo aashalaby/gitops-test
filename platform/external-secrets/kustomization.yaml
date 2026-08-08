@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: external-secrets
+
+helmCharts:
+  - name: external-secrets
+    repo: https://charts.external-secrets.io
+    # VERIFY before first apply: helm search repo external-secrets --versions
+    version: 0.14.4
+    releaseName: external-secrets
+    namespace: external-secrets
+    includeCRDs: true
+    valuesInline:
+      installCRDs: true
+      webhook:
+        create: true
+      certController:
+        create: true
+      serviceMonitor:
+        enabled: true
+
+resources:
+  - clustersecretstore.yaml

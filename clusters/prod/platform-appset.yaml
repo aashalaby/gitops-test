@@ -1,0 +1,60 @@
+# Generates one Application per directory under platform/.
+#
+# Uses the *files* generator rather than the directories generator so each
+# component can declare its own sync wave and namespace in config.yaml.
+# Ordering matters a lot for infrastructure: cert-manager must exist before
+# any ClusterIssuer, CRDs before the custom resources that use them.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  syncPolicy:
+    # create-update: the ApplicationSet will not delete Applications it no
+    # longer generates. This is deliberate — a mistyped generator should not
+    # be able to tear down your whole platform in one reconcile.
+    # Switch to create-delete once you trust the pipeline.
+    applicationsSync: create-update
+    preserveResourcesOnDeletion: false
+
+  generators:
+    - git:
+        repoURL: https://github.com/ORG/gitops.git
+        revision: main
+        files:
+          - path: "platform/*/config.yaml"
+
+  template:
+    metadata:
+      name: '{{.name}}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{.syncWave}}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: platform
+      source:
+        repoURL: https://github.com/ORG/gitops.git
+        targetRevision: main
+        path: '{{.path.path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{.namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 5m

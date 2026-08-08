@@ -1,0 +1,153 @@
+# Values for the argo-cd Helm chart.
+#
+# This file is used TWICE and must be identical in both places:
+#   1. bootstrap/install.sh, for the initial imperative render
+#   2. clusters/prod/argocd.yaml, where Argo CD picks it up to manage itself
+#
+# That is the whole trick behind self-management: the second sync is a no-op
+# because it renders the same manifests the bootstrap did.
+
+global:
+  # TODO: your Argo CD hostname
+  domain: argocd.example.com
+
+configs:
+  params:
+    # TLS terminated at the ingress. If you expose argocd-server directly,
+    # set this to false.
+    server.insecure: true
+
+    # Raise if you have many Applications and see reconciliation lag.
+    controller.status.processors: 20
+    controller.operation.processors: 10
+
+  cm:
+    # Required for the `helmCharts:` blocks used in platform/*/kustomization.yaml
+    kustomize.buildOptions: --enable-helm
+
+    # How often Argo CD polls Git when webhooks are absent. Configure a
+    # webhook in your Git provider and this becomes a safety net rather than
+    # the primary trigger.
+    timeout.reconciliation: 180s
+
+    # Annotation-based tracking survives resource renames better than labels.
+    application.resourceTrackingMethod: annotation
+
+    # Set to false once SSO works, then delete argocd-initial-admin-secret.
+    admin.enabled: true
+
+    # --- SSO: uncomment and fill in one of these ---
+    # oidc.config: |
+    #   name: Okta
+    #   issuer: https://your-org.okta.com
+    #   clientID: $oidc.okta.clientId
+    #   clientSecret: $oidc.okta.clientSecret
+    #   requestedScopes: ["openid", "profile", "email", "groups"]
+
+    # Hide noisy generated fields from the diff view.
+    resource.customizations.ignoreDifferences.apps_Deployment: |
+      jqPathExpressions:
+        - '.spec.template.spec.containers[]?.resources.limits.cpu'
+
+    # Secrets are almost always managed outside Git; don't diff their contents.
+    resource.compareoptions: |
+      ignoreAggregatedRoles: true
+
+  rbac:
+    # Deny by default. Everyone authenticated gets read-only; groups get more.
+    policy.default: role:readonly
+    policy.csv: |
+      p, role:platform-admin, applications, *, */*, allow
+      p, role:platform-admin, clusters, *, *, allow
+      p, role:platform-admin, repositories, *, *, allow
+      p, role:platform-admin, projects, *, *, allow
+
+      p, role:team-a-dev, applications, get, team-a/*, allow
+      p, role:team-a-dev, applications, sync, team-a/*, allow
+      p, role:team-a-dev, applications, action/*, team-a/*, allow
+      # note: no `delete` and no `override` for app teams
+
+      g, org:platform, role:platform-admin
+      g, org:team-a, role:team-a-dev
+
+  # Repository credentials. NEVER put a real token here — this file is in Git.
+  # Create the Secret via External Secrets (see platform/external-secrets)
+  # or, for a public repo, omit credentials entirely.
+  #
+  # credentialTemplates:
+  #   github:
+  #     url: https://github.com/ORG
+  #     password: <from External Secrets>
+  #     username: not-used
+
+controller:
+  replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true   # requires kube-prometheus-stack CRDs
+  resources:
+    requests: { cpu: 250m, memory: 1Gi }
+    limits: { memory: 2Gi }
+
+repoServer:
+  # The repo-server does all manifest rendering — it is the usual bottleneck.
+  replicas: 2
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+applicationSet:
+  replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+server:
+  replicas: 2
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  ingress:
+    # Enable after ingress-nginx and cert-manager are healthy.
+    enabled: false
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    tls: true
+
+dex:
+  # Not needed if you use `oidc.config` above directly.
+  enabled: false
+
+notifications:
+  enabled: true
+  metrics:
+    enabled: true
+  # A silently failing sync is worse than a failed pipeline, because nothing
+  # turns red. Wire this up on day one.
+  notifiers:
+    service.slack: |
+      token: $slack-token
+  subscriptions:
+    - recipients: [platform-alerts]
+      triggers:
+        - on-sync-failed
+        - on-health-degraded
+        - on-sync-status-unknown
+  templates:
+    template.app-sync-failed: |
+      message: |
+        Application {{.app.metadata.name}} sync FAILED.
+        Repo: {{.app.spec.source.repoURL}}
+        Revision: {{.app.status.sync.revision}}
+
+redis-ha:
+  # Flip to true (and controller/server replicas up) for production HA.
+  enabled: false

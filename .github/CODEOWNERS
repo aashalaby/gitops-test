@@ -1,0 +1,9 @@
+# Ownership drives review. Platform changes need the platform team;
+# each team owns its own app directory.
+
+/bootstrap/          @org/platform
+/clusters/           @org/platform
+/platform/           @org/platform
+/renovate.json       @org/platform
+
+/apps/demo-app/      @org/team-a

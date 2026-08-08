@@ -1,0 +1,35 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard"
+  ],
+  "kubernetes": {
+    "managerFilePatterns": ["/\\.yaml$/"]
+  },
+  "helm-values": {
+    "managerFilePatterns": ["/\\.yaml$/"]
+  },
+  "packageRules": [
+    {
+      "description": "Platform charts: group and require review",
+      "matchFilePatterns": ["platform/**"],
+      "groupName": "platform charts",
+      "addLabels": ["platform"]
+    },
+    {
+      "description": "Argo CD itself: never auto-merge, bump both pins together",
+      "matchPackageNames": ["argo-cd"],
+      "groupName": "argo-cd",
+      "addLabels": ["argocd", "needs-manual-review"]
+    },
+    {
+      "description": "Patch updates to apps can auto-merge once CI is green",
+      "matchFilePatterns": ["apps/**"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": false
+    }
+  ],
+  "prConcurrentLimit": 5
+}

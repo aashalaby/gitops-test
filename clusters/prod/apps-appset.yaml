@@ -1,0 +1,61 @@
+# Generates one Application per environment overlay under apps/.
+#
+# apps/<app>/overlays/<env>/config.yaml drives the template, so adding an
+# environment is a new directory plus a config file — no edit here.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  syncPolicy:
+    applicationsSync: create-update
+
+  generators:
+    - git:
+        repoURL: https://github.com/ORG/gitops.git
+        revision: main
+        files:
+          - path: "apps/*/overlays/*/config.yaml"
+
+  template:
+    metadata:
+      name: '{{.name}}-{{.env}}'
+      labels:
+        app.kubernetes.io/name: '{{.name}}'
+        environment: '{{.env}}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: '{{.project}}'
+      source:
+        repoURL: https://github.com/ORG/gitops.git
+        targetRevision: main
+        path: '{{.path.path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{.namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          # Production intentionally omits nothing here — drift correction
+          # applies everywhere. If you need a manual gate for prod, remove
+          # `automated` for that overlay and sync via PR merge + CI instead.
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        managedNamespaceMetadata:
+          labels:
+            pod-security.kubernetes.io/enforce: restricted
+            pod-security.kubernetes.io/warn: restricted
+      ignoreDifferences:
+        # HPA owns replica count at runtime. Diffing it produces permanent
+        # OutOfSync noise and, with selfHeal on, a fight with the autoscaler.
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas

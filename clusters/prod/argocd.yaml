@@ -1,0 +1,51 @@
+# Argo CD manages itself.
+#
+# From here on, upgrading Argo CD is a version bump in a pull request.
+# The multi-source pattern keeps the chart upstream while the values live
+# in this repo — no vendored chart, no fork to maintain.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+  annotations:
+    # Ahead of everything else. If Argo CD needs a config change to deploy
+    # the rest (e.g. enabling --enable-helm), it must apply first.
+    argocd.argoproj.io/sync-wave: "-50"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-cd
+      # MUST match CHART_VERSION in bootstrap/install.sh
+      targetRevision: 10.3.0
+      helm:
+        releaseName: argocd
+        valueFiles:
+          - $values/bootstrap/argocd-values.yaml
+    - repoURL: https://github.com/ORG/gitops.git
+      targetRevision: main
+      # `ref` makes this source available as $values to the source above.
+      # It contributes no manifests of its own.
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # Server-side apply avoids the last-applied-configuration annotation
+      # size limit, which large CRDs blow through.
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    # The controller writes to its own resources; don't fight it.
+    - group: apps
+      kind: Deployment
+      name: argocd-server
+      jsonPointers:
+        - /spec/replicas

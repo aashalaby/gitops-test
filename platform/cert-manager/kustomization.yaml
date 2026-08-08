@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: cert-manager
+
+helmCharts:
+  - name: cert-manager
+    repo: https://charts.jetstack.io
+    # VERIFY before first apply: helm search repo jetstack/cert-manager --versions
+    version: v1.17.2
+    releaseName: cert-manager
+    namespace: cert-manager
+    includeCRDs: true
+    valuesInline:
+      crds:
+        enabled: true
+        keep: true      # don't delete CRDs on uninstall — that deletes Certificates too
+      prometheus:
+        enabled: true
+        servicemonitor:
+          enabled: true
+      resources:
+        requests: { cpu: 10m, memory: 64Mi }
+
+resources:
+  - clusterissuer.yaml

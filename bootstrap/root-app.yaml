@@ -1,0 +1,36 @@
+# The single manifest applied by hand. Everything else descends from it.
+#
+# It points at clusters/prod, which contains the AppProjects, the Argo CD
+# self-management Application, and the ApplicationSets that generate
+# everything else.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    # Ensures a cascading delete if the root app is ever removed. Without this
+    # you orphan every child resource.
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ORG/gitops.git
+    targetRevision: main
+    path: clusters/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

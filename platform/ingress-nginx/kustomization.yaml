@@ -1,0 +1,44 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ingress-nginx
+
+helmCharts:
+  - name: ingress-nginx
+    repo: https://kubernetes.github.io/ingress-nginx
+    # VERIFY before first apply: helm search repo ingress-nginx --versions
+    version: 4.12.1
+    releaseName: ingress-nginx
+    namespace: ingress-nginx
+    includeCRDs: true
+    valuesInline:
+      controller:
+        replicaCount: 2
+        ingressClassResource:
+          name: nginx
+          default: true
+        metrics:
+          enabled: true
+          serviceMonitor:
+            enabled: true
+        service:
+          type: LoadBalancer
+          annotations: {}
+            # AWS NLB example:
+            # service.beta.kubernetes.io/aws-load-balancer-type: external
+            # service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+            # service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+        config:
+          use-forwarded-headers: "true"
+          enable-real-ip: "true"
+        # Spread across nodes so a single node loss doesn't drop ingress.
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: ingress-nginx
+                app.kubernetes.io/component: controller
+        resources:
+          requests: { cpu: 100m, memory: 256Mi }

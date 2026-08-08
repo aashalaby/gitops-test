@@ -1,0 +1,4 @@
+name: demo-app
+env: prod
+namespace: team-a-prod
+project: team-a

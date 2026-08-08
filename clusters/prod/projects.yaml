@@ -1,0 +1,62 @@
+# AppProjects are the real security boundary. Never leave workloads in
+# `default` — it permits any repo to deploy any resource anywhere.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-100"
+spec:
+  description: Cluster infrastructure managed by the platform team
+  sourceRepos:
+    - https://github.com/ORG/gitops.git
+    - https://argoproj.github.io/argo-helm
+    - https://charts.jetstack.io
+    - https://kubernetes.github.io/ingress-nginx
+    - https://charts.external-secrets.io
+    - https://prometheus-community.github.io/helm-charts
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: '*'
+  # Platform legitimately needs cluster-scoped resources (CRDs, ClusterRoles).
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  orphanedResources:
+    # Warn about resources in these namespaces that aren't tracked by Git.
+    # Surfaces manual `kubectl apply` drift that selfHeal can't catch.
+    warn: true
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: team-a
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-100"
+spec:
+  description: Application team A
+  sourceRepos:
+    - https://github.com/ORG/gitops.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: 'team-a-*'
+  # No cluster-scoped resources at all. An app team should never be able to
+  # create a ClusterRoleBinding.
+  clusterResourceWhitelist: []
+  namespaceResourceBlacklist:
+    - group: ''
+      kind: ResourceQuota
+    - group: ''
+      kind: LimitRange
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+  roles:
+    - name: read-sync
+      description: CI can trigger a sync but cannot delete
+      policies:
+        - p, proj:team-a:read-sync, applications, get, team-a/*, allow
+        - p, proj:team-a:read-sync, applications, sync, team-a/*, allow
