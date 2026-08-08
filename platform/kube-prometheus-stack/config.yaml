@@ -1,7 +1,0 @@
-name: kube-prometheus-stack
-namespace: monitoring
-# Late wave, but note that every other component references ServiceMonitor
-# CRDs. Those are created here — Argo CD tolerates the ordering because
-# ServiceMonitors are skipped until the CRD exists and retried after.
-# If that bothers you, move this to wave "-45" and install CRDs separately.
-syncWave: "0"
