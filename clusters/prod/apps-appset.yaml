@@ -3,7 +3,7 @@
 # apps/<app>/overlays/<env>/config.yaml drives the template, so adding an
 # environment is a new directory plus a config file — no edit here.
 apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
+#kind: ApplicationSet
 metadata:
   name: apps
   namespace: argocd
