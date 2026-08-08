@@ -87,7 +87,7 @@ controller:
     serviceMonitor:
       enabled: true   # requires kube-prometheus-stack CRDs
   resources:
-    requests: { cpu: 250m, memory: 1Gi }
+    requests: { cpu: 50m, memory: 1Gi }
     limits: { memory: 2Gi }
 
 repoServer:
