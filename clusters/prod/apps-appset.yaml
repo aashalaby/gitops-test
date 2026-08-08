@@ -16,7 +16,7 @@ spec:
 
   generators:
     - git:
-        repoURL: https://github.com/ORG/gitops.git
+        repoURL: https://github.com/aashalaby/gitops-test
         revision: main
         files:
           - path: "apps/*/overlays/*/config.yaml"
@@ -32,7 +32,7 @@ spec:
     spec:
       project: '{{.project}}'
       source:
-        repoURL: https://github.com/ORG/gitops.git
+        repoURL: https://github.com/aashalaby/gitops-test
         targetRevision: main
         path: '{{.path.path}}'
       destination:

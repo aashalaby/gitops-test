@@ -15,7 +15,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/ORG/gitops.git
+    repoURL: https://github.com/aashalaby/gitops-test
     targetRevision: main
     path: clusters/prod
   destination:

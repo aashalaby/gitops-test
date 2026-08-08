@@ -23,7 +23,7 @@ spec:
 
   generators:
     - git:
-        repoURL: https://github.com/ORG/gitops.git
+        repoURL: https://github.com/aashalaby/gitops-test
         revision: main
         files:
           - path: "platform/*/config.yaml"
@@ -38,7 +38,7 @@ spec:
     spec:
       project: platform
       source:
-        repoURL: https://github.com/ORG/gitops.git
+        repoURL: https://github.com/aashalaby/gitops-test
         targetRevision: main
         path: '{{.path.path}}'
       destination:

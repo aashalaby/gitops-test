@@ -10,7 +10,7 @@ if [[ $# -ne 1 ]]; then
 fi
 
 NEW_URL="$1"
-OLD_URL="https://github.com/ORG/gitops.git"
+OLD_URL="https://github.com/aashalaby/gitops-test"
 
 cd "$(dirname "$0")/.."
 grep -rl "$OLD_URL" . --exclude-dir=.git | while read -r f; do

@@ -25,7 +25,7 @@ spec:
         releaseName: argocd
         valueFiles:
           - $values/bootstrap/argocd-values.yaml
-    - repoURL: https://github.com/ORG/gitops.git
+    - repoURL: https://github.com/aashalaby/gitops-test
       targetRevision: main
       # `ref` makes this source available as $values to the source above.
       # It contributes no manifests of its own.
